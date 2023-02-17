@@ -1,4 +1,4 @@
-From 6ce0969928f6b1a79679d5e8ed3a940738a08640 Mon Sep 17 00:00:00 2001
+From 53e6ae4c5e2d56f97298ac08d887041fca8e9f25 Mon Sep 17 00:00:00 2001
 From: Frank Hunleth <fhunleth@troodon-software.com>
 Date: Mon, 12 Dec 2022 08:07:05 -0500
 Subject: [PATCH] toolchain-external: refine support library search to lib
