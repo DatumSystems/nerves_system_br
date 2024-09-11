@@ -1,0 +1,181 @@
+From dd439dbbae0fd0e5ef1f1d5ad4ed9eb4e8cfa035 Mon Sep 17 00:00:00 2001
+From: Mark Carlin <mcarlin@datumsystems.com>
+Date: Mon, 9 Sep 2024 09:19:37 -0700
+Subject: [PATCH 2/2] Backport nftables to 1.0.8 from 1.0.5. Required to add
+ vlan, arp, and ip rules to tap0 when using an inet table.  Includes required
+ backport libnftnl to 1.2.6 from 1.2.3.
+
+---
+ package/libnftnl/libnftnl.hash                |  7 +++++-
+ package/libnftnl/libnftnl.mk                  |  4 ++--
+ package/nftables/Config.in                    |  5 ++++
+ package/nftables/nftables-python/Config.in    |  4 ++++
+ .../nftables-python/nftables-python.hash      |  1 +
+ .../nftables-python/nftables-python.mk        | 22 ++++++++++++++++++
+ package/nftables/nftables.hash                |  9 ++++++--
+ package/nftables/nftables.mk                  | 23 +++++++++++--------
+ 8 files changed, 60 insertions(+), 15 deletions(-)
+ create mode 100644 package/nftables/nftables-python/Config.in
+ create mode 120000 package/nftables/nftables-python/nftables-python.hash
+ create mode 100644 package/nftables/nftables-python/nftables-python.mk
+
+diff --git a/package/libnftnl/libnftnl.hash b/package/libnftnl/libnftnl.hash
+index 113110fc1b..5d1aad15d1 100644
+--- a/package/libnftnl/libnftnl.hash
++++ b/package/libnftnl/libnftnl.hash
+@@ -1,3 +1,8 @@
+ # From http://www.netfilter.org/projects/libnftnl/downloads.html
+-sha256  e916ea9b79f9518560b9a187251a7c042442a9ecbce7f36be7908888605d0255  libnftnl-1.2.3.tar.bz2
++# Checked pgp signature:
++# https://www.netfilter.org/projects/libnftnl/files/libnftnl-1.2.6.tar.xz.sig
++# with key:
++# https://www.netfilter.org/files/coreteam-gpg-key-0xD55D978A8A1420E4.txt
++sha256  ceeaea2cd92147da19f13a35a7f1a4bc2767ff897e838e4b479cf54b59c777f4  libnftnl-1.2.6.tar.xz
++# Locally computed:
+ sha256  98193898c663001eff2fdcfb676e210c13042bc1a05e8d570c363efa396f8e24  COPYING
+diff --git a/package/libnftnl/libnftnl.mk b/package/libnftnl/libnftnl.mk
+index fd87f70091..18be55a17d 100644
+--- a/package/libnftnl/libnftnl.mk
++++ b/package/libnftnl/libnftnl.mk
+@@ -4,9 +4,9 @@
+ #
+ ################################################################################
+ 
+-LIBNFTNL_VERSION = 1.2.3
++LIBNFTNL_VERSION = 1.2.6
+ LIBNFTNL_SITE = https://netfilter.org/projects/libnftnl/files
+-LIBNFTNL_SOURCE = libnftnl-$(LIBNFTNL_VERSION).tar.bz2
++LIBNFTNL_SOURCE = libnftnl-$(LIBNFTNL_VERSION).tar.xz
+ LIBNFTNL_LICENSE = GPL-2.0+
+ LIBNFTNL_LICENSE_FILES = COPYING
+ LIBNFTNL_INSTALL_STAGING = YES
+diff --git a/package/nftables/Config.in b/package/nftables/Config.in
+index 8d172b7256..833a3a38a2 100644
+--- a/package/nftables/Config.in
++++ b/package/nftables/Config.in
+@@ -13,5 +13,10 @@ config BR2_PACKAGE_NFTABLES
+ 
+ 	  http://www.netfilter.org/projects/nftables/index.html
+ 
++# Legacy: this used to be handled in nftables.mk
++if BR2_PACKAGE_NFTABLES
++source "package/nftables/nftables-python/Config.in"
++endif
++
+ comment "nftables needs a toolchain w/ wchar, headers >= 3.12"
+ 	depends on !BR2_USE_WCHAR || !BR2_TOOLCHAIN_HEADERS_AT_LEAST_3_12
+diff --git a/package/nftables/nftables-python/Config.in b/package/nftables/nftables-python/Config.in
+new file mode 100644
+index 0000000000..b16e2d0ad1
+--- /dev/null
++++ b/package/nftables/nftables-python/Config.in
+@@ -0,0 +1,4 @@
++config BR2_PACKAGE_NFTABLES_PYTHON
++	bool "python bindings"
++	default y # legacy
++	depends on BR2_PACKAGE_PYTHON3
+diff --git a/package/nftables/nftables-python/nftables-python.hash b/package/nftables/nftables-python/nftables-python.hash
+new file mode 120000
+index 0000000000..9ac74580e7
+--- /dev/null
++++ b/package/nftables/nftables-python/nftables-python.hash
+@@ -0,0 +1 @@
++../nftables.hash
+\ No newline at end of file
+diff --git a/package/nftables/nftables-python/nftables-python.mk b/package/nftables/nftables-python/nftables-python.mk
+new file mode 100644
+index 0000000000..908bacd99a
+--- /dev/null
++++ b/package/nftables/nftables-python/nftables-python.mk
+@@ -0,0 +1,22 @@
++################################################################################
++#
++# nftables-python
++#
++################################################################################
++
++# The following assignments work only because nftables.mk is included before
++# this file is.
++NFTABLES_PYTHON_VERSION = $(NFTABLES_VERSION)
++NFTABLES_PYTHON_SOURCE = $(NFTABLES_SOURCE)
++NFTABLES_PYTHON_SITE = $(NFTABLES_SITE)
++NFTABLES_PYTHON_LICENSE = $(NFTABLES_LICENSE)
++NFTABLES_PYTHON_LICENSE_FILES = $(NFTABLES_LICENSE_FILES)
++
++# We share the same source code as nftables
++NFTABLES_PYTHON_DL_SUBDIR = nftables
++
++NFTABLES_PYTHON_SUBDIR = py
++
++NFTABLES_PYTHON_SETUP_TYPE = setuptools
++
++$(eval $(python-package))
+diff --git a/package/nftables/nftables.hash b/package/nftables/nftables.hash
+index 5e5134b61d..c5ede1130a 100644
+--- a/package/nftables/nftables.hash
++++ b/package/nftables/nftables.hash
+@@ -1,3 +1,8 @@
+ # From https://netfilter.org/projects/nftables/downloads.html
+-sha256  8d1b4b18393af43698d10baa25d2b9b6397969beecac7816c35dd0714e4de50a  nftables-1.0.5.tar.bz2
+-sha256  c17bc4fa5b2434c6f283ffcb2312e5bf3c7cdf5787b79505f094d8de734ac53e  COPYING
++# Checked pgp signature:
++# https://netfilter.org/projects/nftables/files/nftables-1.0.8.tar.xz.sig
++# with key:
++# https://netfilter.org/files/coreteam-gpg-key-0xD55D978A8A1420E4.txt
++sha256  9373740de41a82dbc98818e0a46a073faeb8a8d0689fa4fa1a74399c32bf3d50  nftables-1.0.8.tar.xz
++# Locally computed:
++sha256  4ee1e51baf5f3166712fa0c3e01338c7257e50ddef245d28bb14ad68f6070ba5  COPYING
+diff --git a/package/nftables/nftables.mk b/package/nftables/nftables.mk
+index 9d60736d7f..9cba243372 100644
+--- a/package/nftables/nftables.mk
++++ b/package/nftables/nftables.mk
+@@ -4,15 +4,22 @@
+ #
+ ################################################################################
+ 
+-NFTABLES_VERSION = 1.0.5
+-NFTABLES_SOURCE = nftables-$(NFTABLES_VERSION).tar.bz2
++NFTABLES_VERSION = 1.0.8
++NFTABLES_SOURCE = nftables-$(NFTABLES_VERSION).tar.xz
+ NFTABLES_SITE = https://www.netfilter.org/projects/nftables/files
+ NFTABLES_DEPENDENCIES = libmnl libnftnl host-pkgconf $(TARGET_NLS_DEPENDENCIES)
+ NFTABLES_LICENSE = GPL-2.0
+ NFTABLES_LICENSE_FILES = COPYING
+-NFTABLES_CONF_OPTS = --disable-debug --disable-man-doc --disable-pdf-doc
++NFTABLES_INSTALL_STAGING = YES
+ NFTABLES_SELINUX_MODULES = iptables
+ 
++# Python bindings are handled by package nftables-python
++NFTABLES_CONF_OPTS = \
++	--disable-debug \
++	--disable-man-doc \
++	--disable-pdf-doc \
++	--disable-python
++
+ ifeq ($(BR2_PACKAGE_GMP),y)
+ NFTABLES_DEPENDENCIES += gmp
+ NFTABLES_CONF_OPTS += --without-mini-gmp
+@@ -42,13 +49,6 @@ else
+ NFTABLES_CONF_OPTS += --without-json
+ endif
+ 
+-ifeq ($(BR2_PACKAGE_PYTHON3),y)
+-NFTABLES_CONF_OPTS += --enable-python
+-NFTABLES_DEPENDENCIES += python3
+-else
+-NFTABLES_CONF_OPTS += --disable-python
+-endif
+-
+ NFTABLES_CONF_ENV = LIBS="$(NFTABLES_LIBS)"
+ 
+ define NFTABLES_LINUX_CONFIG_FIXUPS
+@@ -58,3 +58,6 @@ define NFTABLES_LINUX_CONFIG_FIXUPS
+ endef
+ 
+ $(eval $(autotools-package))
++
++# Legacy: we used to handle it in this .mk
++include package/nftables/nftables-python/nftables-python.mk
+-- 
+2.34.1
+
